@@ -6,13 +6,11 @@
 - Notifications only: desktop notifications (Windows toast, macOS osascript, Linux notify-send) and terminal notifications (Kitty OSC 99, OSC 777)
 - Simplified `notifyOutcome()` function and related code
 
-# Original README
-
 # pi-notify-agent
 
 ![pi-notify-agent preview](./assets/preview.png)
 
-Cross-platform desktop notifications + sound alerts for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
+Cross-platform desktop notifications for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
 When a pi run takes longer than a configurable threshold, this package notifies you when the agent:
 
@@ -70,8 +68,6 @@ By default the package:
 - waits until the run lasts at least **3000ms**
 - sends notifications for **success**
 - sends notifications for **error**
-- plays **sound** together with the notification
-- emits **BEL attention** together with the notification
 - ignores **aborted** runs
 
 ## CLI flags
@@ -81,8 +77,6 @@ The extension registers these pi flags:
 - `--notify-min-ms <number>`
 - `--notify-success <on|off>`
 - `--notify-error <on|off>`
-- `--notify-sound <on|off>`
-- `--notify-attention <on|off>`
 
 ### Examples
 
@@ -92,12 +86,6 @@ pi --notify-min-ms 5000
 
 # Disable success notifications
 pi --notify-success off
-
-# Keep desktop notifications but disable sound
-pi --notify-sound off
-
-# Keep notifications but disable terminal attention bell
-pi --notify-attention off
 
 # Only notify on errors
 pi --notify-success off --notify-error on
@@ -166,29 +154,9 @@ Then users can install with:
 pi install npm:pi-notify-agent
 ```
 
-## Taskbar flash / dock bounce / attention
-
-The new `notify-attention` mode uses the terminal bell (`BEL`, `\a`). That is the most cross-platform way to request attention from a terminal window.
-
-Whether this becomes a flashing taskbar icon, a bouncing dock icon, a tab badge, or just a beep depends on the terminal emulator settings.
-
-Common setups:
-
-- **Windows Terminal:** configure `bellStyle` to include `window` and/or `taskbar`
-- **kitty:** enable `window_alert_on_bell yes` (and on macOS optionally `macos_dock_badge_on_bell yes`)
-- **xterm:** enable urgent-on-bell behavior (`bellIsUrgent`)
-- **rxvt-unicode / urxvt:** enable `urgentOnBell`
-- **iTerm2:** enable bell/dock-bounce style behavior in profile settings or triggers
-
-This is more portable than trying to directly manipulate the OS taskbar/dock from the extension.
-
 ## Notes
 
 - Linux desktop notifications require a GUI session and usually `notify-send`.
-- Linux sound playback depends on what is installed on the machine.
-- On headless / SSH-only environments the package falls back to terminal notifications / bell.
-- Attention behavior is terminal-dependent; `BEL` is the portable trigger, but the visual effect depends on terminal config.
-- If you want different sounds for success vs error, add that in `extensions/index.ts`.
 
 ## License
 
