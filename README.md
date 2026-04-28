@@ -1,3 +1,13 @@
+# Fork changes
+
+- Removed all sound playback functionality (no more system beeps, OS sounds, or Linux sound file playback)
+- Removed terminal bell (`BEL` / `\a`) and attention mode feature
+- Removed `--notify-sound` and `--notify-attention` CLI flags
+- Notifications only: desktop notifications (Windows toast, macOS osascript, Linux notify-send) and terminal notifications (Kitty OSC 99, OSC 777)
+- Simplified `notifyOutcome()` function and related code
+
+# Original README
+
 # pi-notify-agent
 
 ![pi-notify-agent preview](./assets/preview.png)
@@ -11,11 +21,10 @@ When a pi run takes longer than a configurable threshold, this package notifies 
 
 ## Features
 
-- **Windows:** native toast + system beep
-- **macOS:** native notification via `osascript` + system beep
-- **Linux:** `notify-send` + sound fallback (`canberra-gtk-play` / `paplay` when available)
-- **Terminal fallback:** Kitty `OSC 99`, otherwise `OSC 777`, plus terminal bell when needed
-- **Attention mode:** emits `BEL` so supporting terminals can flash taskbar, tab, dock, or urgency state
+- **Windows:** native toast notifications
+- **macOS:** native notification via `osascript`
+- **Linux:** `notify-send` notifications
+- **Terminal fallback:** Kitty `OSC 99`, otherwise `OSC 777`
 - **Noise reduction:** default threshold is **3000ms**
 - **pi commands:** `/notify-test`, `/notify-test error`, `/notify-status`
 - **CLI flags:** configure threshold and on/off behavior without editing code

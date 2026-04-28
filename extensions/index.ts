@@ -7,15 +7,9 @@ import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-age
 
 const APP_NAME = "Pi";
 const DEFAULT_MIN_NOTIFY_MS = 3000;
-const LINUX_SOUND_FILES = [
-	"/usr/share/sounds/freedesktop/stereo/complete.oga",
-	"/usr/share/sounds/freedesktop/stereo/message.oga",
-	"/usr/share/sounds/freedesktop/stereo/bell.oga",
-];
 
 type AgentOutcome = "success" | "error" | "aborted" | "other";
 type NotifyKind = "success" | "error";
-type SoundPlayback = "external" | "terminal-bell";
 
 const commandExistsCache = new Map<string, boolean>();
 
@@ -140,42 +134,6 @@ function sendDesktopNotification(title: string, body: string): boolean {
 	return false;
 }
 
-function playTerminalBell(): void {
-	process.stdout.write("\x07");
-}
-
-function requestTerminalAttention(): void {
-	playTerminalBell();
-}
-
-function playSound(): SoundPlayback {
-	if (canUseWindowsToast() && commandExists("rundll32.exe")) {
-		runDetached("rundll32.exe", ["user32.dll,MessageBeep"]);
-		return "external";
-	}
-
-	if (isMac() && commandExists("osascript")) {
-		runDetached("osascript", ["-e", "beep"]);
-		return "external";
-	}
-
-	if (isLinux()) {
-		if (commandExists("canberra-gtk-play")) {
-			runDetached("canberra-gtk-play", ["-i", "complete"]);
-			return "external";
-		}
-
-		const soundFile = LINUX_SOUND_FILES.find((file) => existsSync(file));
-		if (soundFile && commandExists("paplay")) {
-			runDetached("paplay", [soundFile]);
-			return "external";
-		}
-	}
-
-	playTerminalBell();
-	return "terminal-bell";
-}
-
 function isAssistantMessage(message: AgentMessage): message is AssistantMessage {
 	return message.role === "assistant" && Array.isArray(message.content);
 }
@@ -244,8 +202,6 @@ function notifyOutcome(
 	ctx: ExtensionContext,
 	durationMs: number,
 	kind: NotifyKind,
-	soundEnabled: boolean,
-	attentionEnabled: boolean,
 	reason?: string,
 	messagePreview?: string,
 ): void {
@@ -259,11 +215,6 @@ function notifyOutcome(
 
 	if (!sendDesktopNotification(title, body)) {
 		sendTerminalNotification(title, body);
-	}
-
-	const soundPlayback = soundEnabled ? playSound() : undefined;
-	if (attentionEnabled && soundPlayback !== "terminal-bell") {
-		requestTerminalAttention();
 	}
 }
 
@@ -280,16 +231,6 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 	});
 	pi.registerFlag("notify-error", {
 		description: "Send notifications for errors/stops: on/off",
-		type: "string",
-		default: "on",
-	});
-	pi.registerFlag("notify-sound", {
-		description: "Play a sound together with notifications: on/off",
-		type: "string",
-		default: "on",
-	});
-	pi.registerFlag("notify-attention", {
-		description: "Emit BEL so supporting terminals can flash taskbar, tab, dock, or urgency state: on/off",
 		type: "string",
 		default: "on",
 	});
@@ -327,8 +268,6 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 
 		const notifySuccess = parseBoolean(pi.getFlag("notify-success"), true);
 		const notifyError = parseBoolean(pi.getFlag("notify-error"), true);
-		const soundEnabled = parseBoolean(pi.getFlag("notify-sound"), true);
-		const attentionEnabled = parseBoolean(pi.getFlag("notify-attention"), true);
 
 		const lastAssistant = lastAssistantThisRun ?? getLastAssistantMessage(event.messages);
 		const preview = firstLine(lastAssistant ? getTextContent(lastAssistant) : undefined);
@@ -337,12 +276,12 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 		if (outcome === "aborted") return;
 		if (outcome === "success") {
 			if (!notifySuccess) return;
-			notifyOutcome(pi, ctx, durationMs, "success", soundEnabled, attentionEnabled, undefined, preview);
+			notifyOutcome(pi, ctx, durationMs, "success", undefined, preview);
 			return;
 		}
 
 		if (!notifyError) return;
-		notifyOutcome(pi, ctx, durationMs, "error", soundEnabled, attentionEnabled, reason, preview);
+		notifyOutcome(pi, ctx, durationMs, "error", reason, preview);
 	});
 
 	pi.registerCommand("notify-test", {
@@ -350,15 +289,11 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const mode = args.trim().toLowerCase();
 			const kind: NotifyKind = mode === "error" ? "error" : "success";
-			const soundEnabled = parseBoolean(pi.getFlag("notify-sound"), true);
-			const attentionEnabled = parseBoolean(pi.getFlag("notify-attention"), true);
 			notifyOutcome(
 				pi,
 				ctx,
 				4200,
 				kind,
-				soundEnabled,
-				attentionEnabled,
 				kind === "error" ? "manual test" : undefined,
 				"manual test",
 			);
@@ -372,15 +307,10 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 			const minMs = parseMinMs(pi.getFlag("notify-min-ms"));
 			const success = parseBoolean(pi.getFlag("notify-success"), true);
 			const error = parseBoolean(pi.getFlag("notify-error"), true);
-			const sound = parseBoolean(pi.getFlag("notify-sound"), true);
-			const attention = parseBoolean(pi.getFlag("notify-attention"), true);
 			const lines = [
 				`notify-min-ms: ${minMs}`,
 				`notify-success: ${success ? "on" : "off"}`,
 				`notify-error: ${error ? "on" : "off"}`,
-				`notify-sound: ${sound ? "on" : "off"}`,
-				`notify-attention: ${attention ? "on" : "off"}`,
-				"hint: attention uses BEL, so supporting terminals can flash taskbar/dock/tab.",
 			];
 			ctx.ui.notify(lines.join("\n"), "info");
 		},
